@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Form, Query, HTTPException, status, Cookie
 from fastapi.responses import RedirectResponse, JSONResponse
 
-from models.user import UserModel
-from schemas import Credentials
+from config import SERVER_URL
+from models import UserModel, Credentials
 from services.auth import is_token_exits, remove_token, get_current_user, create_tokens
 from services.google import generate_auth_uri, get_token, get_userinfo
 from services.users import get_or_create
@@ -11,7 +11,7 @@ router = APIRouter(tags=['Oauth2'])
 
 
 @router.get('/google', response_description='Oauth via google', response_class=RedirectResponse)
-async def oauth_google(redirect_uri: str = 'http://localhost:8000/oauth/google/redirect',
+async def oauth_google(redirect_uri: str = f'{SERVER_URL}/oauth/google/redirect',
                        state: str | None = Query(None, include_in_schema=False)):
     uri = generate_auth_uri(redirect_uri=redirect_uri,
                             scope=['https://www.googleapis.com/auth/books', 'email', 'profile', 'openid'], state=state)
@@ -20,7 +20,7 @@ async def oauth_google(redirect_uri: str = 'http://localhost:8000/oauth/google/r
 
 
 @router.get('/google/redirect', include_in_schema=False, response_model=Credentials)
-async def oauth_google_redirect(code: str, redirect_uri: str = 'http://localhost:8000/oauth/google/redirect'):
+async def oauth_google_redirect(code: str, redirect_uri: str = f'{SERVER_URL}/oauth/google/redirect'):
     return await _oauth_google_redirect(code, redirect_uri)
 
 

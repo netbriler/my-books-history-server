@@ -26,13 +26,3 @@ class UserModelRead(UserBase):
         allow_population_by_field_name = True
         arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
-        schema_extra = {
-            'example': {
-                '_id': '6272cadfg234234ddfg32ef',
-                'google_id': '104567567324242523333',
-                'name': 'Briler',
-                'email': 'netbriler@gmail.com',
-                'picture': 'https://lh3.googleusercontent.com/a-/AOh14GjqUeRFM_a6zjxyNADWH7pq-Zjb4yzSpTPp0Nixtg=s96-c',
-                'locale': 'en'
-            }
-        }

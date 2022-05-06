@@ -6,7 +6,7 @@ from fastapi.security import OAuth2AuthorizationCodeBearer
 from jose import JWTError, jwt
 
 from config import JWT_SECRET, REDIS_URL
-from models.user import UserModel
+from models import UserModel
 from services.users import get_user_by_id
 
 SECRET_KEY = JWT_SECRET

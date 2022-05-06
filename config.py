@@ -1,5 +1,7 @@
 from decouple import config
 
+SERVER_URL = config('SERVER_URL', default='http://localhost:8000')
+
 MONGODB_URL = config('MONGODB_URL')
 REDIS_URL = config('REDIS_URL')
 
@@ -7,3 +9,4 @@ JWT_SECRET = config('JWT_SECRET')
 
 GOOGLE_OAUTH_CLIENT_ID = config('GOOGLE_OAUTH_CLIENT_ID')
 GOOGLE_OAUTH_CLIENT_SECRET = config('GOOGLE_OAUTH_CLIENT_SECRET')
+GOOGLE_BOOKS_API_KEY = config('GOOGLE_BOOKS_API_KEY')

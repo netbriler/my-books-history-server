@@ -3,7 +3,7 @@ from fastapi.encoders import jsonable_encoder
 from pymongo import ReturnDocument
 
 from db import db
-from models.user import UserModel
+from models import UserModel
 
 
 async def get_user_by_id(id: str) -> UserModel | None:
