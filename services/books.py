@@ -26,9 +26,8 @@ def search_books(query: str, start_index: int = None, max_results: int = None, p
         volume_info = item['volumeInfo']
         books.append(BookModel(
             id=item['id'],
-            title=volume_info['title'],
+            title=volume_info['title'] if 'title' in volume_info else '',
             authors=volume_info['authors'] if 'authors' in volume_info else [],
-            published_date=volume_info['publishedDate'],
             image=volume_info['imageLinks']['thumbnail'] if volume_info['readingModes']['image'] else None,
         ))
 

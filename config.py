@@ -1,6 +1,7 @@
 from decouple import config
 
 SERVER_URL = config('SERVER_URL', default='http://localhost:8000')
+CORS_SERVERS = config('CORS_SERVERS')
 
 MONGODB_URL = config('MONGODB_URL')
 REDIS_URL = config('REDIS_URL')
