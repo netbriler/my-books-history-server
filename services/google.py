@@ -17,6 +17,7 @@ def generate_auth_uri(redirect_uri: str, scope: list[str] = None, state: str = N
         'response_type': 'code',
         'access_type': 'offline',
         'include_granted_scopes': 'true',
+        'prompt': 'consent'
     }
     if state:
         params['state'] = state
