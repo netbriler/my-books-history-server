@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Form, Query, HTTPException, status, Cookie
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import RedirectResponse, JSONResponse
 
 from config import SERVER_URL
-from models import UserModel, Credentials
+from models import UserModel, CredentialsResponse, UserModelRead
 from services.auth import is_token_exits, remove_token, get_current_user, create_tokens
 from services.google import generate_auth_uri, get_token, get_tokeninfo
 from services.users import get_or_create
@@ -21,12 +22,12 @@ async def oauth_google(redirect_uri: str = f'{SERVER_URL}/oauth/google/redirect'
     return RedirectResponse(uri)
 
 
-@router.get('/google/redirect', include_in_schema=False, response_model=Credentials)
+@router.get('/google/redirect', include_in_schema=False, response_model=CredentialsResponse)
 async def oauth_google_redirect(code: str, redirect_uri: str = f'{SERVER_URL}/oauth/google/redirect'):
     return await _oauth_google_redirect(code, redirect_uri)
 
 
-@router.post('/google/redirect', include_in_schema=False, response_model=Credentials)
+@router.post('/google/redirect', include_in_schema=False, response_model=CredentialsResponse)
 async def oauth_google_redirect(code: str = Form(...), redirect_uri: str = Form(...)):
     return await _oauth_google_redirect(code, redirect_uri)
 
@@ -51,14 +52,16 @@ async def _oauth_google_redirect(code: str, redirect_uri: str) -> dict | int:
     access_token, refresh_token = await create_tokens({'sub': str(user.id)}, {'sub': str(user.id)})
 
     response = JSONResponse(
-        content={'access_token': access_token, 'refresh_token': refresh_token, 'token_type': 'Bearer'}
+        content={'access_token': access_token,
+                 'user': jsonable_encoder(UserModelRead.parse_obj(jsonable_encoder(user))),
+                 'token_type': 'Bearer'}
     )
     response.set_cookie(key='refresh_token', value=refresh_token, httponly=True)
 
     return response
 
 
-@router.get('/refresh', response_model=Credentials)
+@router.post('/refresh', response_model=CredentialsResponse)
 async def oauth_google_redirect(refresh_token: str = Cookie(...)):
     if not await is_token_exits(refresh_token):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
@@ -70,7 +73,9 @@ async def oauth_google_redirect(refresh_token: str = Cookie(...)):
     access_token, refresh_token = await create_tokens({'sub': str(current_user.id)}, {'sub': str(current_user.id)})
 
     response = JSONResponse(
-        content={'access_token': access_token, 'refresh_token': refresh_token, 'token_type': 'Bearer'}
+        content={'accessToken': access_token,
+                 'user': jsonable_encoder(UserModelRead.parse_obj(current_user)),
+                 'tokenType': 'Bearer'}
     )
     response.set_cookie(key='refresh_token', value=refresh_token, httponly=True)
 

@@ -11,7 +11,8 @@ router = APIRouter(tags=['Books'])
 @router.get('/search', response_model=BooksResponse)
 async def search(q: str = Query(...), start_index: int = Query(0, alias='startIndex', ge=0),
                  max_results: int = Query(16, alias='maxResults', ge=1, le=40),
-                 print_type: str = Query('books', alias='printType'), projection: str = Query('lite')):
+                 print_type: str = Query('books', alias='printType'), projection: str = Query('lite'),
+                 _: UserModel = Depends(get_current_active_user)):
     books, is_error = search_books(q, start_index, max_results, print_type, projection)
 
     if is_error:
