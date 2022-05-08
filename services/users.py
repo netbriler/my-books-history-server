@@ -13,7 +13,8 @@ async def get_user_by_id(id: str) -> UserModel | None:
 
 async def get_or_create(user: UserModel) -> UserModel:
     new_user = await db['users'].find_one_and_update({'google_id': user.google_id},
-                                                     {'$set': jsonable_encoder(user, exclude=['id'])},
+                                                     {'$set': jsonable_encoder(user, exclude=['id'], exclude_none=True,
+                                                                               exclude_unset=True)},
                                                      return_document=ReturnDocument.AFTER, upsert=True)
 
     return UserModel.parse_obj(new_user)

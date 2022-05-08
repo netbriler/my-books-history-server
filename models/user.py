@@ -7,10 +7,7 @@ from models.base import PyObjectId
 class UserBase(BaseModel):
     id: PyObjectId = Field(default_factory=PyObjectId, alias='_id')
     google_id: str = Field(...)
-    name: str = Field(...)
     email: str = Field(...)
-    picture: str = Field(...)
-    locale: str = Field('en')
 
     class Config:
         json_encoders = {ObjectId: str}
@@ -18,7 +15,9 @@ class UserBase(BaseModel):
 
 class UserModel(UserBase):
     access_token: str = Field(...)
-    refresh_token: str = Field(...)
+    expires_in: int = Field(...)
+    scope: str = Field(...)
+    refresh_token: str | None = Field(None)
 
 
 class UserModelRead(UserBase):

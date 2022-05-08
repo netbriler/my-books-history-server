@@ -16,8 +16,7 @@ def generate_auth_uri(redirect_uri: str, scope: list[str] = None, state: str = N
         'scope': ' '.join(scope),
         'response_type': 'code',
         'access_type': 'offline',
-        'include_granted_scopes': 'true',
-        'prompt': 'consent'
+        'include_granted_scopes': 'true'
     }
     if state:
         params['state'] = state
@@ -44,11 +43,21 @@ def get_token(code: str, redirect_uri: str, **kwargs) -> set[dict, bool]:
     return response, 'error' in response
 
 
-def get_userinfo(token_type: str, access_token: str) -> set[dict, bool]:
+def get_userinfo(access_token: str) -> set[dict, bool]:
     headers = {
-        'Authorization': f'{token_type} {access_token}'
+        'Authorization': f'Bearer {access_token}'
     }
 
     response = requests.request('GET', 'https://www.googleapis.com/oauth2/v1/userinfo', headers=headers).json()
+
+    return response, 'error' in response
+
+
+def get_tokeninfo(access_token: str) -> set[dict, bool]:
+    params = {
+        'access_token': access_token
+    }
+
+    response = requests.request('GET', 'https://oauth2.googleapis.com/tokeninfo', params=params).json()
 
     return response, 'error' in response

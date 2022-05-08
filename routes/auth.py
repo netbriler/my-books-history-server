@@ -4,7 +4,7 @@ from fastapi.responses import RedirectResponse, JSONResponse
 from config import SERVER_URL
 from models import UserModel, Credentials
 from services.auth import is_token_exits, remove_token, get_current_user, create_tokens
-from services.google import generate_auth_uri, get_token, get_userinfo
+from services.google import generate_auth_uri, get_token, get_tokeninfo
 from services.users import get_or_create
 
 router = APIRouter(tags=['Oauth2'])
@@ -14,7 +14,9 @@ router = APIRouter(tags=['Oauth2'])
 async def oauth_google(redirect_uri: str = f'{SERVER_URL}/oauth/google/redirect',
                        state: str | None = Query(None, include_in_schema=False)):
     uri = generate_auth_uri(redirect_uri=redirect_uri,
-                            scope=['https://www.googleapis.com/auth/books', 'email', 'profile', 'openid'], state=state)
+                            scope=['https://www.googleapis.com/auth/books',
+                                   'https://www.googleapis.com/auth/userinfo.email',
+                                   'https://www.googleapis.com/auth/userinfo.profile', 'openid'], state=state)
 
     return RedirectResponse(uri)
 
@@ -35,13 +37,14 @@ async def _oauth_google_redirect(code: str, redirect_uri: str) -> dict | int:
     if access_data_error:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
 
-    userinfo, userinfo_error = get_userinfo(access_data['token_type'], access_data['access_token'])
-    if userinfo_error:
+    tokeninfo, tokeninfo_error = get_tokeninfo(access_data['access_token'])
+    if tokeninfo_error:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
 
-    new_user = UserModel(google_id=userinfo['id'], name=userinfo['name'], email=userinfo['email'],
-                         picture=userinfo['picture'], locale=userinfo['locale'],
-                         access_token=access_data['access_token'], refresh_token=access_data['refresh_token'])
+    new_user = UserModel(google_id=tokeninfo['sub'], email=tokeninfo['email'],
+                         access_token=access_data['access_token'],
+                         refresh_token=access_data['refresh_token'] if 'refresh_token' in access_data else None,
+                         scope=tokeninfo['scope'], expires_in=tokeninfo['exp'])
 
     user = await get_or_create(new_user)
 
