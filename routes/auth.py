@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Form, Query, HTTPException, status, Cookie
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.responses import RedirectResponse, JSONResponse, Response
 
 from config import SERVER_URL
 from models import UserModel, CredentialsResponse, UserModelRead
@@ -52,16 +52,16 @@ async def _oauth_google_redirect(code: str, redirect_uri: str) -> dict | int:
     access_token, refresh_token = await create_tokens({'sub': str(user.id)}, {'sub': str(user.id)})
 
     response = JSONResponse(
-        content={'access_token': access_token,
+        content={'accessToken': access_token,
                  'user': jsonable_encoder(UserModelRead.parse_obj(jsonable_encoder(user))),
-                 'token_type': 'Bearer'}
+                 'tokenType': 'Bearer'}
     )
     response.set_cookie(key='refresh_token', value=refresh_token, httponly=True)
 
     return response
 
 
-@router.post('/refresh', response_model=CredentialsResponse)
+@router.get('/refresh', response_model=CredentialsResponse)
 async def oauth_google_redirect(refresh_token: str = Cookie(...)):
     if not await is_token_exits(refresh_token):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
@@ -80,3 +80,10 @@ async def oauth_google_redirect(refresh_token: str = Cookie(...)):
     response.set_cookie(key='refresh_token', value=refresh_token, httponly=True)
 
     return response
+
+
+@router.get('/logout')
+async def logout(refresh_token: str = Cookie(...)):
+    await remove_token(refresh_token)
+
+    return Response(status_code=200)
