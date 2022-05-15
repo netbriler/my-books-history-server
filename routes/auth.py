@@ -62,7 +62,7 @@ async def _oauth_google_redirect(code: str, redirect_uri: str) -> dict | int:
 
 
 @router.get('/refresh', response_model=CredentialsResponse)
-async def oauth_google_redirect(refresh_token: str = Cookie(...)):
+async def oauth_refresh_token(refresh_token: str = Cookie(...)):
     if not await is_token_exits(refresh_token):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 

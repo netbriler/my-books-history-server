@@ -1,9 +1,7 @@
-from fastapi import APIRouter, HTTPException, status, Query, Depends
+from fastapi import APIRouter, HTTPException, status, Query
 
-from models import BooksResponse, BookshelvesModelRead, UserModel
-from services.auth import get_current_active_user
+from models import BooksResponse
 from services.books import search_books
-from services.bookshelves import get_my_bookshelves
 
 router = APIRouter(tags=['Books'])
 
@@ -18,13 +16,3 @@ async def search(q: str = Query(...), start_index: int = Query(0, alias='startIn
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
 
     return books
-
-
-@router.get('/bookshelves', response_model=list[BookshelvesModelRead])
-async def get_bookshelves(current_user: UserModel = Depends(get_current_active_user)):
-    bookshelves, is_error = get_my_bookshelves(current_user.access_token)
-
-    if is_error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
-
-    return bookshelves
