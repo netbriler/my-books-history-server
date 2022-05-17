@@ -43,6 +43,21 @@ def get_token(code: str, redirect_uri: str, **kwargs) -> set[dict, bool]:
     return response, 'error' in response
 
 
+def get_refreshed_token(refresh_token: str, **kwargs) -> set[dict, bool]:
+    url = 'https://accounts.google.com/o/oauth2/token'
+    params = {
+        'refresh_token': refresh_token,
+        'client_id': GOOGLE_OAUTH_CLIENT_ID,
+        'client_secret': GOOGLE_OAUTH_CLIENT_SECRET,
+        'grant_type': 'refresh_token',
+    }
+    params.update(kwargs)
+
+    response = requests.request('POST', url, data=params).json()
+
+    return response, 'error' in response
+
+
 def get_userinfo(access_token: str) -> set[dict, bool]:
     headers = {
         'Authorization': f'Bearer {access_token}'

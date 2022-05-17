@@ -18,3 +18,13 @@ async def get_or_create(user: UserModel) -> UserModel:
                                                      return_document=ReturnDocument.AFTER, upsert=True)
 
     return UserModel.parse_obj(new_user)
+
+
+async def update_user_credentials(id: str, access_token: str, refresh_token: str, expires_in: int) -> UserModel:
+    new_user = await db['users'].find_one_and_update({'_id': ObjectId(id)},
+                                                     {'$set': {'access_token': access_token,
+                                                               'refresh_token': refresh_token,
+                                                               'expires_in': expires_in}},
+                                                     return_document=ReturnDocument.AFTER, upsert=True)
+
+    return UserModel.parse_obj(new_user)
