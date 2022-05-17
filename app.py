@@ -5,7 +5,7 @@ from config import CORS_SERVERS
 from routes.auth import router as AuthRouter
 from routes.user import router as UserRouter
 from routes.book import router as BookRouter
-from routes.bookshelve import router as BookshelveRouter
+from routes.bookshelf import router as BookshelveRouter
 
 app = FastAPI(title='My Books History')
 

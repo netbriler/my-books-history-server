@@ -1,11 +1,22 @@
+from bson import ObjectId
 from pydantic import Field, BaseModel
+
+from models.base import PyObjectId
 
 
 class BookModel(BaseModel):
-    id: str = Field(...)
+    id: PyObjectId = Field(default_factory=PyObjectId, alias='_id')
+    google_id: str = Field(...)
     title: str = Field(...)
     authors: list[str] = Field([])
     image: str = Field(None)
+    bookshelves: list[int] = Field([])
+    user_id: PyObjectId = Field(None)
+
+    class Config:
+        allow_population_by_field_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
 
 
 class BooksResponse(BaseModel):
@@ -14,3 +25,4 @@ class BooksResponse(BaseModel):
 
     class Config:
         allow_population_by_field_name = True
+        json_encoders = {ObjectId: str}
