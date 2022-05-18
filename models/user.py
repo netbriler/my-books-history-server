@@ -1,32 +1,24 @@
-from bson import ObjectId
-from pydantic import BaseModel, Field
+from pydantic import Field
 
-from models.base import PyObjectId
+from models.base import PyObjectId, _BaseModel
 
 
-class UserBase(BaseModel):
+class UserBase(_BaseModel):
     id: PyObjectId = Field(default_factory=PyObjectId, alias='_id')
     google_id: str = Field(..., alias='googleId')
     email: str = Field(...)
 
-    class Config:
-        json_encoders = {ObjectId: str}
+
+class UserCredentialsModel(_BaseModel):
+    access_token: str = Field(...)
+    expires_in: int = Field(...)
+    scope: str | None = Field(None)
+    refresh_token: str | None = Field(None)
 
 
 class UserModel(UserBase):
-    access_token: str = Field(...)
-    expires_in: int = Field(...)
-    scope: str = Field(...)
-    refresh_token: str | None = Field(None)
-
-    class Config:
-        allow_population_by_field_name = True
-        arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
+    credentials: UserCredentialsModel = Field(...)
 
 
 class UserModelRead(UserBase):
-    class Config:
-        allow_population_by_field_name = True
-        arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
+    ...

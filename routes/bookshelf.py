@@ -1,13 +1,13 @@
 from fastapi import APIRouter, HTTPException, status, Depends, Query, Form
 
-from models import BookshelvesModelRead, UserModel, BooksResponse
+from models import BookshelfModelRead, UserModel, BooksResponse
 from services.auth import get_current_active_user
 from services.bookshelves import BookshelvesService
 
 router = APIRouter(tags=['Bookshelves'])
 
 
-@router.get('/', response_model=list[BookshelvesModelRead])
+@router.get('/', response_model=list[BookshelfModelRead])
 async def get_bookshelves(current_user: UserModel = Depends(get_current_active_user)):
     service = await BookshelvesService.create(current_user)
     bookshelves, is_error = service.get_my_bookshelves()
@@ -24,33 +24,9 @@ async def get_books(id: int, start_index: int = Query(0, alias='startIndex', ge=
                     print_type: str = Query('books', alias='printType'), projection: str = Query('lite'),
                     current_user: UserModel = Depends(get_current_active_user)):
     service = await BookshelvesService.create(current_user)
-    books, is_error = service.get_bookshelve_books(id, start_index, max_results, print_type, projection)
+    books, is_error = service.get_bookshelf_books(id, start_index, max_results, print_type, projection)
 
     if is_error:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
 
     return books
-
-
-@router.post('/{id}/')
-async def add_book(id: int, book_id: str = Form(..., alias='bookId'),
-                   current_user: UserModel = Depends(get_current_active_user)):
-    service = await BookshelvesService.create(current_user)
-    response, is_error = service.add_book_to_bookshelve(id, book_id)
-
-    if is_error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
-
-    return response
-
-
-@router.delete('/{id}/')
-async def remove_book(id: int, book_id: str = Form(..., alias='bookId'),
-                      current_user: UserModel = Depends(get_current_active_user)):
-    service = await BookshelvesService.create(current_user)
-    response, is_error = service.remove_book_from_bookshelve(id, book_id)
-
-    if is_error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
-
-    return response

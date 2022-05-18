@@ -1,11 +1,10 @@
 import requests
 from bson import ObjectId
-from fastapi.encoders import jsonable_encoder
 from pymongo import ReturnDocument
 
 from config import GOOGLE_BOOKS_API_KEY
 from db import db
-from models import BookModel, BooksResponse
+from models import BookModel, BooksResponse, BookModelRead
 
 
 def search_books(query: str, start_index: int = None, max_results: int = None, print_type: str = None,
@@ -59,20 +58,24 @@ def get_book_from_google(id: str) -> set[BookModel, bool]:
     return book, False
 
 
-async def get_all_by_user_id(id: str) -> list[BookModel] | None:
-    books = []
-    cursor = db['books'].find({'user_id': str(id)})
+async def get_books_by_user_id(user_id: ObjectId, google_ids: list[str] = None) -> list[BookModelRead] | None:
+    query = {'user_id': user_id}
+    if google_ids:
+        query['google_id'] = {'$in': google_ids}
+        length = len(google_ids)
+    else:
+        length = await db['books'].count_documents(query)
 
-    for document in await cursor.to_list(length=await db['books'].count_documents({'user_id': str(id)})):
+    books = []
+    for document in await db['books'].find(query).to_list(length=length):
         books.append(document)
 
-    return [BookModel(**book) for book in books] if books else None
+    return [BookModelRead(**book) for book in books] if books else []
 
 
 async def get_or_create_book(book: BookModel) -> BookModel:
-    new_book = await db['books'].find_one_and_update({'google_id': book.google_id},
-                                                     {'$set': jsonable_encoder(book, exclude=['id'], exclude_none=True,
-                                                                               exclude_unset=True)},
+    new_book = await db['books'].find_one_and_update({'google_id': book.google_id, 'user_id': book.user_id},
+                                                     {'$set': book.dict()},
                                                      return_document=ReturnDocument.AFTER, upsert=True)
 
     return BookModel.parse_obj(new_book)

@@ -3,7 +3,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import RedirectResponse, JSONResponse, Response
 
 from config import SERVER_URL
-from models import UserModel, CredentialsResponse, UserModelRead
+from models import UserModel, CredentialsResponse, UserModelRead, UserCredentialsModel
 from services.auth import is_token_exits, remove_token, get_current_user, create_tokens
 from services.google import generate_auth_uri, get_token, get_tokeninfo
 from services.users import get_or_create
@@ -42,17 +42,18 @@ async def _oauth_google_redirect(code: str, redirect_uri: str) -> dict | int:
     if tokeninfo_error:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
 
-    new_user = UserModel(google_id=tokeninfo['sub'], email=tokeninfo['email'],
-                         access_token=access_data['access_token'],
-                         refresh_token=access_data['refresh_token'] if 'refresh_token' in access_data else None,
-                         scope=tokeninfo['scope'], expires_in=tokeninfo['exp'])
+    user_credentials = UserCredentialsModel(access_token=access_data['access_token'],
+                                            refresh_token=access_data['refresh_token']
+                                            if 'refresh_token' in access_data else None,
+                                            scope=tokeninfo['scope'], expires_in=tokeninfo['exp'])
+    new_user = UserModel(google_id=tokeninfo['sub'], email=tokeninfo['email'], credentials=user_credentials)
 
     user = await get_or_create(new_user)
 
     access_token, refresh_token = await create_tokens({'sub': str(user.id)}, {'sub': str(user.id)})
 
     response = JSONResponse(
-        content={'accessToken': access_token,
+        content={'accessToken': access_token, 'access_token': access_token,
                  'user': jsonable_encoder(UserModelRead.parse_obj(jsonable_encoder(user))),
                  'tokenType': 'Bearer'}
     )

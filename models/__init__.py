@@ -1,5 +1,5 @@
 from .base import PyObjectId
-from .book import BookModel, BooksResponse
-from .bookshelves import BookshelvesModel, BookshelvesModelRead
+from .book import BookModel, BooksResponse, BookModelRead
+from .bookshelf import BookshelfModel, BookshelfModelRead
 from .credentials import CredentialsResponse
-from .user import UserModel, UserModelRead, UserBase
+from .user import UserModel, UserModelRead, UserBase, UserCredentialsModel

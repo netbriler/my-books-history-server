@@ -3,7 +3,7 @@ from fastapi.encoders import jsonable_encoder
 from pymongo import ReturnDocument
 
 from db import db
-from models import UserModel
+from models import UserModel, UserCredentialsModel
 
 
 async def get_user_by_id(id: str) -> UserModel | None:
@@ -20,11 +20,10 @@ async def get_or_create(user: UserModel) -> UserModel:
     return UserModel.parse_obj(new_user)
 
 
-async def update_user_credentials(id: str, access_token: str, refresh_token: str, expires_in: int) -> UserModel:
+async def update_user_credentials(id: str, credentials: UserCredentialsModel) -> UserModel:
     new_user = await db['users'].find_one_and_update({'_id': ObjectId(id)},
-                                                     {'$set': {'access_token': access_token,
-                                                               'refresh_token': refresh_token,
-                                                               'expires_in': expires_in}},
+                                                     {'$set': {'credentials': credentials.dict()}
+                                                      },
                                                      return_document=ReturnDocument.AFTER, upsert=True)
 
     return UserModel.parse_obj(new_user)
