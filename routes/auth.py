@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Form, Query, HTTPException, status, Cookie
+from fastapi import APIRouter, Form, Query, HTTPException, status, Cookie, BackgroundTasks
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import RedirectResponse, JSONResponse, Response
 
@@ -6,6 +6,7 @@ from config import SERVER_URL
 from models import UserModel, CredentialsResponse, UserModelRead, UserCredentialsModel
 from services.auth import is_token_exits, remove_token, get_current_user, create_tokens
 from services.google import generate_auth_uri, get_token, get_tokeninfo
+from services.synchronization import synchronize_books
 from services.users import get_or_create
 
 router = APIRouter(tags=['Oauth2'])
@@ -23,16 +24,18 @@ async def oauth_google(redirect_uri: str = f'{SERVER_URL}/oauth/google/redirect'
 
 
 @router.get('/google/redirect', include_in_schema=False, response_model=CredentialsResponse)
-async def oauth_google_redirect(code: str, redirect_uri: str = f'{SERVER_URL}/oauth/google/redirect'):
-    return await _oauth_google_redirect(code, redirect_uri)
+async def oauth_google_redirect(background_tasks: BackgroundTasks, code: str,
+                                redirect_uri: str = f'{SERVER_URL}/oauth/google/redirect'):
+    return await _oauth_google_redirect(code, redirect_uri, background_tasks=background_tasks)
 
 
 @router.post('/google/redirect', include_in_schema=False, response_model=CredentialsResponse)
-async def oauth_google_redirect(code: str = Form(...), redirect_uri: str = Form(...)):
-    return await _oauth_google_redirect(code, redirect_uri)
+async def oauth_google_redirect(background_tasks: BackgroundTasks, code: str = Form(...),
+                                redirect_uri: str = Form(...)):
+    return await _oauth_google_redirect(code, redirect_uri, background_tasks=background_tasks)
 
 
-async def _oauth_google_redirect(code: str, redirect_uri: str) -> dict | int:
+async def _oauth_google_redirect(code: str, redirect_uri: str, background_tasks: BackgroundTasks = None) -> dict | int:
     access_data, access_data_error = get_token(code, redirect_uri)
 
     if access_data_error:
@@ -58,6 +61,9 @@ async def _oauth_google_redirect(code: str, redirect_uri: str) -> dict | int:
                  'tokenType': 'Bearer'}
     )
     response.set_cookie(key='refresh_token', value=refresh_token, httponly=True)
+
+    if background_tasks:
+        background_tasks.add_task(synchronize_books, user=user)
 
     return response
 

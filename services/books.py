@@ -7,8 +7,8 @@ from db import db
 from models import BookModel, BooksResponse, BookModelRead
 
 
-def search_books(query: str, start_index: int = None, max_results: int = None, print_type: str = None,
-                 projection: str = None) -> set[BooksResponse | dict, bool]:
+def search_google_books(query: str, start_index: int = None, max_results: int = None, print_type: str = None,
+                        projection: str = None) -> set[BooksResponse | dict, bool]:
     url = 'https://www.googleapis.com/books/v1/volumes'
     params = {
         'q': query,
@@ -27,7 +27,7 @@ def search_books(query: str, start_index: int = None, max_results: int = None, p
     books = []
     for item in response['items']:
         volume_info = item['volumeInfo']
-        books.append(BookModel(
+        books.append(BookModelRead(
             google_id=item['id'],
             title=volume_info['title'] if 'title' in volume_info else '',
             authors=volume_info['authors'] if 'authors' in volume_info else [],
@@ -58,19 +58,29 @@ def get_book_from_google(id: str) -> set[BookModel, bool]:
     return book, False
 
 
-async def get_books_by_user_id(user_id: ObjectId, google_ids: list[str] = None) -> list[BookModelRead] | None:
+async def get_books_by_user_id(user_id: ObjectId, bookshelves: list[int] = None,
+                               google_ids: list[str] = None, limit: int = None,
+                               offset: int = 0) -> set[list[BookModelRead] | None, int]:
     query = {'user_id': user_id}
+
+    total_items = await db['books'].count_documents(query)
+
+    if bookshelves:
+        query['bookshelves'] = {'$in': bookshelves}
+
     if google_ids:
         query['google_id'] = {'$in': google_ids}
         length = len(google_ids)
+    elif not limit:
+        length = total_items
     else:
-        length = await db['books'].count_documents(query)
+        length = limit
 
     books = []
-    for document in await db['books'].find(query).to_list(length=length):
+    for document in await db['books'].find(query).skip(offset).limit(limit).to_list(length=length):
         books.append(document)
 
-    return [BookModelRead(**book) for book in books] if books else []
+    return [BookModelRead(**book) for book in books] if books else [], total_items
 
 
 async def get_or_create_book(book: BookModel) -> BookModel:

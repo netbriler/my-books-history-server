@@ -1,9 +1,9 @@
 from bson import ObjectId
 from fastapi import APIRouter, HTTPException, status, Query, Depends, Form
 
-from models import BooksResponse, UserModel
+from models import BooksResponse, UserModel, BookModelRead
 from services.auth import get_current_active_user
-from services.books import search_books, get_book_from_google, get_or_create_book, get_books_by_user_id
+from services.books import search_google_books, get_book_from_google, get_or_create_book, get_books_by_user_id
 
 router = APIRouter(tags=['Books'])
 
@@ -13,14 +13,15 @@ async def search(q: str = Query(...), start_index: int = Query(0, alias='startIn
                  max_results: int = Query(16, alias='maxResults', ge=1, le=40),
                  print_type: str = Query('books', alias='printType'), projection: str = Query('lite'),
                  current_user: UserModel = Depends(get_current_active_user)):
-    books, is_error = search_books(q, start_index, max_results, print_type, projection)
+    books, is_error = search_google_books(q, start_index, max_results, print_type, projection)
 
     if is_error:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
 
     found_books_ids = list(map(lambda b: b.google_id, books.items))
     # get from the database only found books through the search and not all at once
-    external_books = await get_books_by_user_id(current_user.id, found_books_ids)
+    external_books, _ = await get_books_by_user_id(current_user.id, google_ids=found_books_ids,
+                                                   limit=max_results, offset=start_index)
 
     result = []
     for item in books.items:
@@ -31,9 +32,9 @@ async def search(q: str = Query(...), start_index: int = Query(0, alias='startIn
     return books
 
 
-@router.post('/{id}/')
-async def set_bookshelf(id: str, bookshelves: list[int] = Form(...),
-                        current_user: UserModel = Depends(get_current_active_user)):
+@router.post('/{id}/setBookshelves', response_model=BookModelRead)
+async def set_bookshelves(id: str, bookshelves: list[int] = Form(...),
+                          current_user: UserModel = Depends(get_current_active_user)):
     book, is_error = get_book_from_google(id)
     book.bookshelves = bookshelves
     book.user_id = ObjectId(current_user.id)

@@ -4,15 +4,15 @@ import time
 import requests
 
 from config import GOOGLE_BOOKS_API_KEY
-from models import BookshelfModel, BookModel, BooksResponse, UserModel, UserCredentialsModel
+from models import BookshelfModel, BookModel, UserModel, UserCredentialsModel
 from services.google import get_refreshed_token, get_tokeninfo
 from services.users import update_user_credentials
 
 
-class BookshelvesService:
+class GoogleBookshelvesService:
     @classmethod
     async def create(cls, user: UserModel):
-        self = BookshelvesService()
+        self = GoogleBookshelvesService()
         self.user = user
         if user.credentials.expires_in <= int(time.time()) + 5:
             access_data, access_data_error = get_refreshed_token(user.credentials.refresh_token)
@@ -43,12 +43,12 @@ class BookshelvesService:
         for item in response['items']:
             if item['id'] in [1, 5, 6, 7, 8, 9]:
                 continue
-            bookshelves.append(BookshelfModel.parse_obj(item))
+            bookshelves.append(BookshelfModel(id=item['id'], title=item['title'], total_items=item['volumeCount']))
 
         return bookshelves, False
 
     def get_bookshelf_books(self, id: int, start_index: int = None, max_results: int = None,
-                            print_type: str = None, projection: str = None) -> set[BooksResponse | dict, bool]:
+                            print_type: str = 'books', projection: str = 'lite') -> set[BookModel | dict, bool]:
         url = f'https://www.googleapis.com/books/v1/mylibrary/bookshelves/{id}/volumes'
         headers = {
             'Authorization': f'Bearer {self.user.credentials.access_token}'
@@ -66,7 +66,7 @@ class BookshelvesService:
         if 'error' in response:
             return response, True
         if response['totalItems'] == 0:
-            return BooksResponse(total_items=response['totalItems'], items=[]), False
+            return [], False
 
         books = []
         for item in response['items']:
@@ -78,7 +78,31 @@ class BookshelvesService:
                 image=volume_info['imageLinks']['thumbnail'] if volume_info['readingModes']['image'] else None,
             ))
 
-        return BooksResponse(total_items=response['totalItems'], items=books), False
+        return books, False
+
+    def get_all_bookshelf_books(self) -> list[BookModel]:
+        bookshelves, is_error = self.get_my_bookshelves()
+        if is_error:
+            return bookshelves, True
+
+        total_books = {}
+        for bookshelf in bookshelves:
+            start_index = 0
+            while start_index < bookshelf.total_items:
+                books, is_error = self.get_bookshelf_books(bookshelf.id, start_index, max_results=40)
+                if is_error:
+                    return books, True
+
+                for book in books:
+                    if book.google_id not in total_books:
+                        book.bookshelves = [bookshelf.id]
+                        total_books[book.google_id] = book
+                    else:
+                        total_books[book.google_id].bookshelves.append(bookshelf.id)
+
+                start_index += 40
+
+        return total_books.values(), False
 
     def add_book_to_bookshelf(self, bookshelf_id: int, book_id: str):
         url = f'https://www.googleapis.com/books/v1/mylibrary/bookshelves/{bookshelf_id}/addVolume'
