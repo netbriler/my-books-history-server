@@ -1,6 +1,7 @@
 from pydantic import Field
 
 from models.base import PyObjectId, _BaseModel
+from models.bookshelf import BookshelfModel
 
 
 class UserBase(_BaseModel):
@@ -21,4 +22,4 @@ class UserModel(UserBase):
 
 
 class UserModelRead(UserBase):
-    ...
+    bookshelves: list[BookshelfModel] = Field([])
