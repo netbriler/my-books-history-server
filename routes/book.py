@@ -14,23 +14,23 @@ async def search(q: str = Query(...), start_index: int = Query(0, alias='startIn
                  max_results: int = Query(16, alias='maxResults', ge=1, le=40),
                  print_type: str = Query('books', alias='printType'), projection: str = Query('lite'),
                  current_user: UserModel = Depends(get_current_active_user)):
-    books, is_error = search_google_books(q, start_index, max_results, print_type, projection)
+    books_response, is_error = search_google_books(q, start_index, max_results, print_type, projection)
 
     if is_error:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
 
-    found_books_ids = list(map(lambda b: b.google_id, books.items))
-    # get from the database only found books through the search and not all at once
+    found_books_ids = list(map(lambda b: b.google_id, books_response.items))
+    # Get from the database only found books through the search and not all at once
     external_books, _ = await get_books_by_user_id(current_user.id, google_ids=found_books_ids,
                                                    limit=max_results, offset=start_index)
 
     result = []
-    for item in books.items:
+    for item in books_response.items:
         result.append(next((i for i in external_books if i.google_id == item.google_id), item))
 
-    books.items = result
+    books_response.items = result
 
-    return books
+    return books_response
 
 
 @router.get('/{id}/', response_model=BookModelRead)

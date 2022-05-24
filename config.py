@@ -1,12 +1,15 @@
 from decouple import config
 
 SERVER_URL = config('SERVER_URL', default='http://localhost:8000')
-CORS_SERVERS = config('CORS_SERVERS')
+FRONTEND_URL = config('FRONTEND_URL')
 
 MONGODB_URL = config('MONGODB_URL')
 REDIS_URL = config('REDIS_URL')
 
 JWT_SECRET = config('JWT_SECRET')
+JWT_ALGORITHM = config('JWT_ALGORITHM', default='HS256')
+ACCESS_TOKEN_EXPIRE_MINUTES = config('ACCESS_TOKEN_EXPIRE_MINUTES', cast=int, default=30)
+REFRESH_TOKEN_EXPIRE_MINUTES = config('REFRESH_TOKEN_EXPIRE_MINUTES', cast=int, default=60 * 24 * 30)  # 30 days
 
 GOOGLE_OAUTH_CLIENT_ID = config('GOOGLE_OAUTH_CLIENT_ID')
 GOOGLE_OAUTH_CLIENT_SECRET = config('GOOGLE_OAUTH_CLIENT_SECRET')

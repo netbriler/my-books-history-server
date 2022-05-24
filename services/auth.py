@@ -5,25 +5,21 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2AuthorizationCodeBearer
 from jose import JWTError, jwt
 
-from config import JWT_SECRET, REDIS_URL
+from config import JWT_SECRET, REDIS_URL, JWT_ALGORITHM, REFRESH_TOKEN_EXPIRE_MINUTES, ACCESS_TOKEN_EXPIRE_MINUTES
 from models import UserModel
 from services.users import get_user_by_id
 
-SECRET_KEY = JWT_SECRET
-ALGORITHM = 'HS256'
-ACCESS_TOKEN_EXPIRE_MINUTES = 120
-REFRESH_TOKEN_EXPIRE_MINUTES = 60 * 24 * 30  # 30 days
-
-oauth2_scheme = OAuth2AuthorizationCodeBearer(tokenUrl='/oauth/google/redirect', authorizationUrl='/oauth/google',
+oauth2_scheme = OAuth2AuthorizationCodeBearer(tokenUrl='/oauth/google/redirect?swagger=1',
+                                              authorizationUrl='/oauth/google',
                                               description='__Leave blank credentials__')
 
 
 async def create_tokens(access_data: dict, refresh_data: dict) -> set[str, str]:
     access_data.update({'exp': datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)})
-    access_token = jwt.encode(access_data, SECRET_KEY, algorithm=ALGORITHM)
+    access_token = jwt.encode(access_data, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
     refresh_data.update({'exp': datetime.utcnow() + timedelta(minutes=REFRESH_TOKEN_EXPIRE_MINUTES)})
-    refresh_token = jwt.encode(refresh_data, SECRET_KEY, algorithm=ALGORITHM)
+    refresh_token = jwt.encode(refresh_data, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
     await save_token(refresh_token, 'white', REFRESH_TOKEN_EXPIRE_MINUTES * 60)  # convert minutes to seconds
 
@@ -37,7 +33,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         headers={'WWW-Authenticate': 'Bearer'},
     )
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         id: str = payload.get('sub')
         if id is None:
             raise credentials_exception

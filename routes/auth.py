@@ -2,9 +2,9 @@ from fastapi import APIRouter, Form, Query, HTTPException, status, Cookie, Backg
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import RedirectResponse, JSONResponse, Response
 
-from config import SERVER_URL
+from config import SERVER_URL, FRONTEND_URL
 from models import UserModel, CredentialsResponse, UserModelRead, UserCredentialsModel
-from services.auth import is_token_exits, remove_token, get_current_user, create_tokens
+from services.auth import is_token_exits, remove_token, get_current_user, create_tokens, REFRESH_TOKEN_EXPIRE_MINUTES
 from services.google import generate_auth_uri, get_token, get_tokeninfo
 from services.synchronization import synchronize_books
 from services.users import get_or_create
@@ -23,19 +23,29 @@ async def oauth_google(redirect_uri: str = f'{SERVER_URL}/oauth/google/redirect'
     return RedirectResponse(uri)
 
 
-@router.get('/google/redirect', include_in_schema=False, response_model=CredentialsResponse)
-async def oauth_google_redirect(background_tasks: BackgroundTasks, code: str,
+@router.get('/google/redirect', include_in_schema=False)
+async def oauth_google_redirect(background_tasks: BackgroundTasks, code: str, scope: str,
                                 redirect_uri: str = f'{SERVER_URL}/oauth/google/redirect'):
-    return await _oauth_google_redirect(code, redirect_uri, background_tasks=background_tasks)
+
+    resource = await _oauth_google_redirect(code, redirect_uri, background_tasks=background_tasks)
+
+    # If user have not given permission to manage google books
+    if 'https://www.googleapis.com/auth/books' not in scope:
+        return await oauth_google(redirect_uri)
+
+    uri = FRONTEND_URL + '/oauth2-redirect.html#' + resource.body.decode('utf-8')
+    return RedirectResponse(uri)
 
 
-@router.post('/google/redirect', include_in_schema=False, response_model=CredentialsResponse)
-async def oauth_google_redirect(background_tasks: BackgroundTasks, code: str = Form(...),
-                                redirect_uri: str = Form(...)):
-    return await _oauth_google_redirect(code, redirect_uri, background_tasks=background_tasks)
+@router.post('/google/redirect', include_in_schema=False, response_model=CredentialsResponse,
+             description='Oauth2 for swagger docs')
+async def oauth_google_redirect_swagger(background_tasks: BackgroundTasks, code: str = Form(...),
+                                        redirect_uri: str = Form(...), swagger: bool = Query(False)):
+    return await _oauth_google_redirect(code, redirect_uri, background_tasks=background_tasks, swagger=swagger)
 
 
-async def _oauth_google_redirect(code: str, redirect_uri: str, background_tasks: BackgroundTasks = None) -> dict | int:
+async def _oauth_google_redirect(code: str, redirect_uri: str, background_tasks: BackgroundTasks = None,
+                                 swagger=False) -> JSONResponse:
     access_data, access_data_error = get_token(code, redirect_uri)
 
     if access_data_error:
@@ -55,12 +65,17 @@ async def _oauth_google_redirect(code: str, redirect_uri: str, background_tasks:
 
     access_token, refresh_token = await create_tokens({'sub': str(user.id)}, {'sub': str(user.id)})
 
-    response = JSONResponse(
-        content={'accessToken': access_token, 'access_token': access_token,
-                 'user': jsonable_encoder(UserModelRead.parse_obj(jsonable_encoder(user))),
-                 'tokenType': 'Bearer'}
-    )
-    response.set_cookie(key='refresh_token', value=refresh_token, httponly=True)
+    response_content = {'accessToken': access_token,
+                        'user': jsonable_encoder(UserModelRead.parse_obj(jsonable_encoder(user))),
+                        'tokenType': 'Bearer'}
+
+    # Snake case for swagger docs
+    if swagger:
+        response_content['access_token'] = access_token
+
+    response = JSONResponse(content=response_content)
+    response.set_cookie(key='refresh_token', value=refresh_token, httponly=True, secure=True,
+                        max_age=REFRESH_TOKEN_EXPIRE_MINUTES)
 
     if background_tasks:
         background_tasks.add_task(synchronize_books, user=user)
@@ -84,7 +99,8 @@ async def oauth_refresh_token(refresh_token: str = Cookie(...)):
                  'user': jsonable_encoder(UserModelRead.parse_obj(current_user)),
                  'tokenType': 'Bearer'}
     )
-    response.set_cookie(key='refresh_token', value=refresh_token, httponly=True)
+    response.set_cookie(key='refresh_token', value=refresh_token, httponly=True, secure=True,
+                        max_age=REFRESH_TOKEN_EXPIRE_MINUTES)
 
     return response
 

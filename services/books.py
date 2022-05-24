@@ -24,6 +24,9 @@ def search_google_books(query: str, start_index: int = None, max_results: int = 
     if 'error' in response:
         return response, True
 
+    if not response['totalItems']:
+        return BooksResponse(total_items=response['totalItems'], items=[]), False
+
     books = []
     for item in response['items']:
         volume_info = item['volumeInfo']
@@ -37,7 +40,7 @@ def search_google_books(query: str, start_index: int = None, max_results: int = 
     return BooksResponse(total_items=response['totalItems'], items=books), False
 
 
-def get_book_from_google(id: str) -> set[BookModel, bool]:
+def get_book_from_google(id: str) -> set[BookModel | dict, bool]:
     url = f'https://www.googleapis.com/books/v1/volumes/{id}/'
     params = {
         'key': GOOGLE_BOOKS_API_KEY,
@@ -60,7 +63,7 @@ def get_book_from_google(id: str) -> set[BookModel, bool]:
 
 async def get_books_by_user_id(user_id: ObjectId, bookshelves: list[int] = None,
                                google_ids: list[str] = None, limit: int = None,
-                               offset: int = 0) -> set[list[BookModelRead] | None, int]:
+                               offset: int = 0) -> set[list[BookModelRead], int]:
     query = {'user_id': user_id}
 
     total_items = await db['books'].count_documents(query)

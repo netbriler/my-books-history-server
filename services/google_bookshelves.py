@@ -2,6 +2,7 @@ import json
 import time
 
 import requests
+from fastapi import HTTPException, status
 
 from config import GOOGLE_BOOKS_API_KEY
 from models import BookshelfModel, BookModel, UserModel, UserCredentialsModel
@@ -18,7 +19,12 @@ class GoogleBookshelvesService:
         self.user = user
         if user.credentials.expires_in <= int(time.time()) + 5:
             access_data, access_data_error = get_refreshed_token(user.credentials.refresh_token)
+            if access_data_error:
+                raise HTTPException(status_code=status.HTTP_423_LOCKED)
+
             tokeninfo, tokeninfo_error = get_tokeninfo(access_data['access_token'])
+            if tokeninfo_error:
+                raise HTTPException(status_code=status.HTTP_423_LOCKED)
 
             user_credentials = UserCredentialsModel(
                 access_token=access_data['access_token'],

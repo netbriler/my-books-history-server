@@ -14,7 +14,7 @@ async def get_bookshelves(current_user: UserModel = Depends(get_current_active_u
     bookshelves, is_error = service.get_my_bookshelves()
 
     if is_error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
+        raise HTTPException(status_code=status.HTTP_423_LOCKED)
 
     return bookshelves
 
