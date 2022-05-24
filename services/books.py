@@ -83,6 +83,11 @@ async def get_books_by_user_id(user_id: ObjectId, bookshelves: list[int] = None,
     return [BookModelRead(**book) for book in books] if books else [], total_items
 
 
+async def get_book(user_id: ObjectId, book_id: str) -> BookModel | None:
+    book = await db['books'].find_one({'user_id': user_id, 'google_id': book_id})
+    return BookModel.parse_obj(book) if book else None
+
+
 async def get_or_create_book(book: BookModel) -> BookModel:
     new_book = await db['books'].find_one_and_update({'google_id': book.google_id, 'user_id': book.user_id},
                                                      {'$set': book.dict()},

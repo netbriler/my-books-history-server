@@ -10,6 +10,8 @@ from services.users import update_user_credentials
 
 
 class GoogleBookshelvesService:
+    DEFAULT_SKIP_BOOKSHELVES = [1, 5, 6, 7, 8, 9]
+
     @classmethod
     async def create(cls, user: UserModel):
         self = GoogleBookshelvesService()
@@ -28,7 +30,9 @@ class GoogleBookshelvesService:
             self.user = new_user
         return self
 
-    def get_my_bookshelves(self) -> set[list[BookshelfModel] | dict, bool]:
+    def get_my_bookshelves(self, skip_bookshelves=None) -> set[list[BookshelfModel] | dict, bool]:
+        if skip_bookshelves is None:
+            skip_bookshelves = self.DEFAULT_SKIP_BOOKSHELVES
         url = 'https://www.googleapis.com/books/v1/mylibrary/bookshelves'
         headers = {
             'Authorization': f'Bearer {self.user.credentials.access_token}'
@@ -41,7 +45,7 @@ class GoogleBookshelvesService:
 
         bookshelves = []
         for item in response['items']:
-            if item['id'] in [1, 5, 6, 7, 8, 9]:
+            if item['id'] in skip_bookshelves:
                 continue
             bookshelves.append(BookshelfModel(id=item['id'], title=item['title'], total_items=item['volumeCount']))
 
