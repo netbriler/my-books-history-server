@@ -1,3 +1,5 @@
+import json
+
 from fastapi import APIRouter, Form, Query, HTTPException, status, Cookie, BackgroundTasks
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import RedirectResponse, JSONResponse, Response
@@ -26,15 +28,12 @@ async def oauth_google(redirect_uri: str = f'{SERVER_URL}/oauth/google/redirect'
 @router.get('/google/redirect', include_in_schema=False)
 async def oauth_google_redirect(background_tasks: BackgroundTasks, code: str, scope: str,
                                 redirect_uri: str = f'{SERVER_URL}/oauth/google/redirect'):
-
-    resource = await _oauth_google_redirect(code, redirect_uri, background_tasks=background_tasks)
-
     # If user have not given permission to manage google books
     if 'https://www.googleapis.com/auth/books' not in scope:
         return await oauth_google(redirect_uri)
 
-    uri = FRONTEND_URL + '/oauth2-redirect.html#' + resource.body.decode('utf-8')
-    return RedirectResponse(uri)
+    return await _oauth_google_redirect(code, redirect_uri, background_tasks=background_tasks,
+                                        redirect_to_frontend=True)
 
 
 @router.post('/google/redirect', include_in_schema=False, response_model=CredentialsResponse,
@@ -45,7 +44,7 @@ async def oauth_google_redirect_swagger(background_tasks: BackgroundTasks, code:
 
 
 async def _oauth_google_redirect(code: str, redirect_uri: str, background_tasks: BackgroundTasks = None,
-                                 swagger=False) -> JSONResponse:
+                                 swagger=False, redirect_to_frontend=False) -> JSONResponse:
     access_data, access_data_error = get_token(code, redirect_uri)
 
     if access_data_error:
@@ -73,7 +72,12 @@ async def _oauth_google_redirect(code: str, redirect_uri: str, background_tasks:
     if swagger:
         response_content['access_token'] = access_token
 
-    response = JSONResponse(content=response_content)
+    if redirect_to_frontend:
+        uri = FRONTEND_URL + '/oauth2-redirect.html#' + json.dumps(response_content)
+        response = RedirectResponse(uri)
+    else:
+        response = JSONResponse(content=response_content)
+
     response.set_cookie(key='refresh_token', value=refresh_token, httponly=True, secure=True,
                         max_age=REFRESH_TOKEN_EXPIRE_MINUTES)
 

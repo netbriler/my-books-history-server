@@ -36,7 +36,7 @@ class GoogleBookshelvesService:
             self.user = new_user
         return self
 
-    def get_my_bookshelves(self, skip_bookshelves=None) -> set[list[BookshelfModel] | dict, bool]:
+    def get_my_bookshelves(self, skip_bookshelves=None) -> tuple[list[BookshelfModel] | dict, bool]:
         if skip_bookshelves is None:
             skip_bookshelves = self.DEFAULT_SKIP_BOOKSHELVES
         url = 'https://www.googleapis.com/books/v1/mylibrary/bookshelves'
@@ -58,7 +58,7 @@ class GoogleBookshelvesService:
         return bookshelves, False
 
     def get_bookshelf_books(self, id: int, start_index: int = None, max_results: int = None,
-                            print_type: str = 'books', projection: str = 'lite') -> set[BookModel | dict, bool]:
+                            print_type: str = 'books', projection: str = 'lite') -> tuple[BookModel | dict, bool]:
         url = f'https://www.googleapis.com/books/v1/mylibrary/bookshelves/{id}/volumes'
         headers = {
             'Authorization': f'Bearer {self.user.credentials.access_token}'

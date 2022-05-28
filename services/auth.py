@@ -14,7 +14,7 @@ oauth2_scheme = OAuth2AuthorizationCodeBearer(tokenUrl='/oauth/google/redirect?s
                                               description='__Leave blank credentials__')
 
 
-async def create_tokens(access_data: dict, refresh_data: dict) -> set[str, str]:
+async def create_tokens(access_data: dict, refresh_data: dict) -> tuple[str, str]:
     access_data.update({'exp': datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)})
     access_token = jwt.encode(access_data, JWT_SECRET, algorithm=JWT_ALGORITHM)
 

@@ -26,7 +26,7 @@ def generate_auth_uri(redirect_uri: str, scope: list[str] = None, state: str = N
     return url + urlencode(params)
 
 
-def get_token(code: str, redirect_uri: str, **kwargs) -> set[dict, bool]:
+def get_token(code: str, redirect_uri: str, **kwargs) -> tuple[dict, bool]:
     url = 'https://accounts.google.com/o/oauth2/token'
     params = {
         'code': code,
@@ -43,7 +43,7 @@ def get_token(code: str, redirect_uri: str, **kwargs) -> set[dict, bool]:
     return response, 'error' in response
 
 
-def get_refreshed_token(refresh_token: str, **kwargs) -> set[dict, bool]:
+def get_refreshed_token(refresh_token: str, **kwargs) -> tuple[dict, bool]:
     url = 'https://accounts.google.com/o/oauth2/token'
     params = {
         'refresh_token': refresh_token,
@@ -58,7 +58,7 @@ def get_refreshed_token(refresh_token: str, **kwargs) -> set[dict, bool]:
     return response, 'error' in response
 
 
-def get_userinfo(access_token: str) -> set[dict, bool]:
+def get_userinfo(access_token: str) -> tuple[dict, bool]:
     headers = {
         'Authorization': f'Bearer {access_token}'
     }
@@ -68,7 +68,7 @@ def get_userinfo(access_token: str) -> set[dict, bool]:
     return response, 'error' in response
 
 
-def get_tokeninfo(access_token: str) -> set[dict, bool]:
+def get_tokeninfo(access_token: str) -> tuple[dict, bool]:
     params = {
         'access_token': access_token
     }
