@@ -114,4 +114,7 @@ async def logout(refresh_token: str = Cookie(None)):
     if refresh_token:
         await remove_token(refresh_token)
 
-    return Response(status_code=200)
+    response = Response(status_code=200)
+    response.delete_cookie('refresh_token')
+
+    return response

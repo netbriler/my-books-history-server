@@ -43,11 +43,12 @@ async def get_book_by_id(id: str, current_user: UserModel = Depends(get_current_
 
 
 @router.post('/{id}/setBookshelves', response_model=BookModelRead)
-async def set_bookshelves(background_tasks: BackgroundTasks, id: str, bookshelves: list[int] = Form(...),
+async def set_bookshelves(background_tasks: BackgroundTasks, id: str, bookshelves: list[int] = Form(list()),
                           current_user: UserModel = Depends(get_current_active_user)):
     book = await get_book(current_user.id, id)
-    old_bookshelves = book.bookshelves
-    if not book:
+    if book:
+        old_bookshelves = book.bookshelves
+    else:
         book, is_error = get_book_from_google(id)
         if is_error:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
@@ -58,8 +59,7 @@ async def set_bookshelves(background_tasks: BackgroundTasks, id: str, bookshelve
 
     new_book = await get_or_create_book(book)
 
-    if background_tasks and old_bookshelves:
-        background_tasks.add_task(synchronize_bookshelves_books, old_bookshelves=old_bookshelves, book=new_book,
-                                  user=current_user)
+    background_tasks.add_task(synchronize_bookshelves_books, old_bookshelves=old_bookshelves, book=new_book,
+                              user=current_user)
 
     return new_book

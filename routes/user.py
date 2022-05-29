@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from models import UserModel, UserModelRead
 from services.auth import get_current_active_user
@@ -11,6 +11,9 @@ router = APIRouter(tags=['User'])
 async def get_current_user(current_user: UserModel = Depends(get_current_active_user)):
     service = await GoogleBookshelvesService.create(current_user)
     bookshelves, is_error = service.get_my_bookshelves()
+
+    if is_error:
+        raise HTTPException(status_code=status.HTTP_423_LOCKED, detail='Lose permission to manage google books')
 
     user = UserModelRead(**current_user.dict())
     user.bookshelves = bookshelves if not is_error else []

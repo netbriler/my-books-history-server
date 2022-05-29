@@ -66,13 +66,15 @@ async def get_books_by_user_id(user_id: ObjectId, bookshelves: list[int] = None,
                                offset: int = 0) -> tuple[list[BookModelRead], int]:
     query = {'user_id': user_id}
 
-    total_items = await db['books'].count_documents(query)
-
     if bookshelves:
         query['bookshelves'] = {'$in': bookshelves}
 
     if google_ids:
         query['google_id'] = {'$in': google_ids}
+
+    total_items = await db['books'].count_documents(query)
+
+    if google_ids:
         length = len(google_ids)
     elif not limit:
         length = total_items

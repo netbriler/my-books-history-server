@@ -15,8 +15,8 @@ async def synchronize_books(user: UserModel):
 
 
 async def synchronize_bookshelves_books(user: UserModel, old_bookshelves: list, book: BookModel):
-    old_bookshelves = tuple(old_bookshelves)
-    new_bookshelves = tuple(book.bookshelves)
+    old_bookshelves = set(old_bookshelves) if old_bookshelves else set()
+    new_bookshelves = set(book.bookshelves)
 
     # Find difference between old and new bookshelves
     to_delete = old_bookshelves.difference(new_bookshelves)

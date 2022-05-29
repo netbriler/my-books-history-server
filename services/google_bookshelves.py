@@ -20,11 +20,11 @@ class GoogleBookshelvesService:
         if user.credentials.expires_in <= int(time.time()) + 5:
             access_data, access_data_error = get_refreshed_token(user.credentials.refresh_token)
             if access_data_error:
-                raise HTTPException(status_code=status.HTTP_423_LOCKED)
+                raise HTTPException(status_code=status.HTTP_423_LOCKED, detail='Lose permission to manage google books')
 
             tokeninfo, tokeninfo_error = get_tokeninfo(access_data['access_token'])
             if tokeninfo_error:
-                raise HTTPException(status_code=status.HTTP_423_LOCKED)
+                raise HTTPException(status_code=status.HTTP_423_LOCKED, detail='Lose permission to manage google books')
 
             user_credentials = UserCredentialsModel(
                 access_token=access_data['access_token'],
