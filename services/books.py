@@ -28,14 +28,15 @@ def search_google_books(query: str, start_index: int = None, max_results: int = 
         return BooksResponse(total_items=response['totalItems'], items=[]), False
 
     books = []
-    for item in response['items']:
-        volume_info = item['volumeInfo']
-        books.append(BookModelRead(
-            google_id=item['id'],
-            title=volume_info['title'] if 'title' in volume_info else '',
-            authors=volume_info['authors'] if 'authors' in volume_info else [],
-            image=volume_info['imageLinks']['thumbnail'] if volume_info['readingModes']['image'] else None,
-        ))
+    if 'items' in response:
+        for item in response['items']:
+            volume_info = item['volumeInfo']
+            books.append(BookModelRead(
+                google_id=item['id'],
+                title=volume_info['title'] if 'title' in volume_info else '',
+                authors=volume_info['authors'] if 'authors' in volume_info else [],
+                image=volume_info['imageLinks']['thumbnail'] if volume_info['readingModes']['image'] else None,
+            ))
 
     return BooksResponse(total_items=response['totalItems'], items=books), False
 
