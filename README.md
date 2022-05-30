@@ -1,6 +1,7 @@
 ## Reading list app backend
 Search books via google books api and add them to your bookshelves synchronized with google library
 
+[Frontend](https://github.com/netbriler/my-books-history)/[Backend](https://github.com/netbriler/my-books-history-server)
 
 * Fastapi
 * Mongodb + motor
@@ -8,7 +9,7 @@ Search books via google books api and add them to your bookshelves synchronized 
 * JWT auth
 * Google oauth and books api
 
-Demo http://my-books-history.herokuapp.com/docs
+Demo https://my-books-history.herokuapp.com/docs
 
 ## Run
 ```bash
