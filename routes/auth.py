@@ -1,4 +1,5 @@
 import json
+import logging
 
 from fastapi import APIRouter, Form, Query, HTTPException, status, Cookie, BackgroundTasks
 from fastapi.encoders import jsonable_encoder
@@ -48,10 +49,12 @@ async def _oauth_google_redirect(code: str, redirect_uri: str, background_tasks:
     access_data, access_data_error = get_token(code, redirect_uri)
 
     if access_data_error:
+        logging.error(f'{access_data=}')
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
 
     tokeninfo, tokeninfo_error = get_tokeninfo(access_data['access_token'])
     if tokeninfo_error:
+        logging.error(f'{tokeninfo=}')
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
 
     user_credentials = UserCredentialsModel(access_token=access_data['access_token'],

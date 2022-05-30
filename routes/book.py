@@ -1,3 +1,5 @@
+import logging
+
 from bson import ObjectId
 from fastapi import APIRouter, HTTPException, status, Query, Depends, Form, BackgroundTasks
 
@@ -17,6 +19,7 @@ async def search(q: str = Query(...), start_index: int = Query(0, alias='startIn
     books_response, is_error = search_google_books(q, start_index, max_results, print_type, projection)
 
     if is_error:
+        logging.error(f'{q=} {books_response=}')
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
 
     found_books_ids = list(map(lambda b: b.google_id, books_response.items))
@@ -51,6 +54,7 @@ async def set_bookshelves(background_tasks: BackgroundTasks, id: str, bookshelve
     else:
         book, is_error = get_book_from_google(id)
         if is_error:
+            logging.error(f'{current_user=} {id=}')
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
         old_bookshelves = None
 

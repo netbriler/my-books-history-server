@@ -1,3 +1,6 @@
+import logging
+import sys
+
 from fastapi import FastAPI, Request
 from fastapi.exceptions import StarletteHTTPException, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,6 +12,8 @@ from routes.book import router as BookRouter
 from routes.bookshelf import router as BookshelveRouter
 from routes.user import router as UserRouter
 from services.auth import remove_token
+
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, format='[%(filename)s:%(lineno)d] %(message)s')
 
 app = FastAPI(title='My Books History')
 
