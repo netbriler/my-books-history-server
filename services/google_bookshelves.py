@@ -1,14 +1,15 @@
 import json
-import logging
 import time
 
 import requests
 from fastapi import HTTPException, status
 
-from config import GOOGLE_BOOKS_API_KEY
-from models import BookshelfModel, BookModel, UserModel, UserCredentialsModel
-from services.google import get_refreshed_token, get_tokeninfo
-from services.users import update_user_credentials
+from data.config import GOOGLE_BOOKS_API_KEY
+from exceptions import GoogleTokenError, GoogleGetBookshelvesError, GoogleGetBookshelfError, GoogleAddToBookshelfError, \
+    GoogleRemoveFromBookshelfError
+from models import BookshelfModel, BookModel, UserModel
+from services.google import refresh_user_tokens
+from utils.misc.logging import logger
 
 
 class GoogleBookshelvesService:
@@ -19,27 +20,17 @@ class GoogleBookshelvesService:
         self = GoogleBookshelvesService()
         self.user = user
         if user.credentials.expires_in <= int(time.time()) + 5:
-            access_data, access_data_error = get_refreshed_token(user.credentials.refresh_token)
-            if access_data_error:
-                logging.error(f'{user=} {access_data=}')
+            logger.error(f'Try refresh user tokens, {user.id=}')
+            try:
+                new_user = await refresh_user_tokens(user)
+            except GoogleTokenError as e:
+                logger.error(f'{type(e).__name__} {e}')
                 raise HTTPException(status_code=status.HTTP_423_LOCKED, detail='Lose permission to manage google books')
 
-            tokeninfo, tokeninfo_error = get_tokeninfo(access_data['access_token'])
-            if tokeninfo_error:
-                logging.error(f'{user=} {tokeninfo_error=}')
-                raise HTTPException(status_code=status.HTTP_423_LOCKED, detail='Lose permission to manage google books')
-
-            user_credentials = UserCredentialsModel(
-                access_token=access_data['access_token'],
-                refresh_token=access_data['refresh_token'] if 'refresh_token' in access_data
-                else user.credentials.refresh_token,
-                expires_in=tokeninfo['exp'], scope=tokeninfo['scope'],
-            )
-            new_user = await update_user_credentials(user.id, user_credentials)
             self.user = new_user
         return self
 
-    def get_my_bookshelves(self, skip_bookshelves=None) -> tuple[list[BookshelfModel] | dict, bool]:
+    def get_my_bookshelves(self, skip_bookshelves=None) -> list[BookshelfModel]:
         if skip_bookshelves is None:
             skip_bookshelves = self.DEFAULT_SKIP_BOOKSHELVES
         url = 'https://www.googleapis.com/books/v1/mylibrary/bookshelves'
@@ -50,8 +41,7 @@ class GoogleBookshelvesService:
 
         response = requests.request('GET', url, headers=headers, params=params).json()
         if 'error' in response:
-            logging.error(f'{response=} {self.user=}')
-            return response, True
+            raise GoogleGetBookshelvesError(response)
 
         bookshelves = []
         for item in response['items']:
@@ -59,10 +49,10 @@ class GoogleBookshelvesService:
                 continue
             bookshelves.append(BookshelfModel(id=item['id'], title=item['title'], total_items=item['volumeCount']))
 
-        return bookshelves, False
+        return bookshelves
 
     def get_bookshelf_books(self, id: int, start_index: int = None, max_results: int = None,
-                            print_type: str = 'books', projection: str = 'lite') -> tuple[BookModel | dict, bool]:
+                            print_type: str = 'books', projection: str = 'lite') -> list[BookModel]:
         url = f'https://www.googleapis.com/books/v1/mylibrary/bookshelves/{id}/volumes'
         headers = {
             'Authorization': f'Bearer {self.user.credentials.access_token}'
@@ -78,10 +68,9 @@ class GoogleBookshelvesService:
 
         response = requests.request('GET', url, headers=headers, params=params).json()
         if 'error' in response:
-            logging.error(f'{id=} {response=} {self.user=}')
-            return response, True
+            raise GoogleGetBookshelfError(response)
         if response['totalItems'] == 0:
-            return [], False
+            return []
 
         books = []
         for item in response['items']:
@@ -93,20 +82,16 @@ class GoogleBookshelvesService:
                 image=volume_info['imageLinks']['thumbnail'] if volume_info['readingModes']['image'] else None,
             ))
 
-        return books, False
+        return books
 
     def get_all_bookshelf_books(self) -> list[BookModel]:
-        bookshelves, is_error = self.get_my_bookshelves()
-        if is_error:
-            return bookshelves, True
+        bookshelves = self.get_my_bookshelves()
 
         total_books = {}
         for bookshelf in bookshelves:
             start_index = 0
             while start_index < bookshelf.total_items:
-                books, is_error = self.get_bookshelf_books(bookshelf.id, start_index, max_results=40)
-                if is_error:
-                    return books, True
+                books = self.get_bookshelf_books(bookshelf.id, start_index, max_results=40)
 
                 for book in books:
                     if book.google_id not in total_books:
@@ -117,7 +102,7 @@ class GoogleBookshelvesService:
 
                 start_index += 40
 
-        return total_books.values(), False
+        return total_books.values()
 
     def add_book_to_bookshelf(self, bookshelf_id: int, book_id: str):
         url = f'https://www.googleapis.com/books/v1/mylibrary/bookshelves/{bookshelf_id}/addVolume'
@@ -133,9 +118,7 @@ class GoogleBookshelvesService:
 
         response = requests.request('POST', url, headers=headers, data=payload).json()
         if 'error' in response:
-            return response, True
-
-        return {'ok': True}, False
+            raise GoogleAddToBookshelfError(response)
 
     def remove_book_from_bookshelf(self, bookshelf_id: int, book_id: str):
         url = f'https://www.googleapis.com/books/v1/mylibrary/bookshelves/{bookshelf_id}/removeVolume'
@@ -151,6 +134,4 @@ class GoogleBookshelvesService:
 
         response = requests.request('POST', url, headers=headers, data=payload).json()
         if 'error' in response:
-            return response, True
-
-        return {'ok': True}, False
+            raise GoogleRemoveFromBookshelfError(response)

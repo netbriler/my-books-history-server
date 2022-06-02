@@ -1,8 +1,24 @@
+from typing import NamedTuple
 from urllib.parse import urlencode
 
 import requests
 
-from config import GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET
+from data.config import GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET
+from exceptions import GoogleCodeTokenError, GoogleTokenError
+from models import UserCredentialsModel, UserModel
+from services.users import update_user_credentials
+
+
+class Token(NamedTuple):
+    access_token: str
+    refresh_token: str = None
+
+
+class Tokeninfo(NamedTuple):
+    sub: str
+    scope: str
+    exp: int
+    email: str
 
 
 def generate_auth_uri(redirect_uri: str, scope: list[str] = None, state: str = None, **kwargs: dict[str, str]) -> str:
@@ -26,7 +42,7 @@ def generate_auth_uri(redirect_uri: str, scope: list[str] = None, state: str = N
     return url + urlencode(params)
 
 
-def get_token(code: str, redirect_uri: str, **kwargs) -> tuple[dict, bool]:
+def get_token(code: str, redirect_uri: str, **kwargs) -> Token:
     url = 'https://accounts.google.com/o/oauth2/token'
     params = {
         'code': code,
@@ -39,11 +55,14 @@ def get_token(code: str, redirect_uri: str, **kwargs) -> tuple[dict, bool]:
     params.update(kwargs)
 
     response = requests.request('POST', url, data=params).json()
+    if 'error' in response:
+        raise GoogleCodeTokenError(response)
 
-    return response, 'error' in response
+    return Token(access_token=response['access_token'],
+                 refresh_token=response['refresh_token'] if 'refresh_token' in response else None)
 
 
-def get_refreshed_token(refresh_token: str, **kwargs) -> tuple[dict, bool]:
+def get_refreshed_token(refresh_token: str, **kwargs) -> Token:
     url = 'https://accounts.google.com/o/oauth2/token'
     params = {
         'refresh_token': refresh_token,
@@ -55,24 +74,34 @@ def get_refreshed_token(refresh_token: str, **kwargs) -> tuple[dict, bool]:
 
     response = requests.request('POST', url, data=params).json()
 
-    return response, 'error' in response
+    if 'error' in response:
+        raise GoogleTokenError(response)
+
+    return Token(access_token=response['access_token'],
+                 refresh_token=response['refresh_token'] if 'refresh_token' in response else None)
 
 
-def get_userinfo(access_token: str) -> tuple[dict, bool]:
-    headers = {
-        'Authorization': f'Bearer {access_token}'
-    }
+async def refresh_user_tokens(user: UserModel) -> UserModel:
+    access_data = get_refreshed_token(user.credentials.refresh_token)
+    tokeninfo = get_tokeninfo(access_data.access_token)
 
-    response = requests.request('GET', 'https://www.googleapis.com/oauth2/v1/userinfo', headers=headers).json()
+    user_credentials = UserCredentialsModel(
+        access_token=access_data.access_token,
+        refresh_token=access_data.refresh_token if access_data.refresh_token else user.credentials.refresh_token,
+        expires_in=tokeninfo.exp, scope=tokeninfo.scope,
+    )
 
-    return response, 'error' in response
+    return await update_user_credentials(user.id, user_credentials)
 
 
-def get_tokeninfo(access_token: str) -> tuple[dict, bool]:
+def get_tokeninfo(access_token: str) -> Tokeninfo:
     params = {
         'access_token': access_token
     }
 
     response = requests.request('GET', 'https://oauth2.googleapis.com/tokeninfo', params=params).json()
 
-    return response, 'error' in response
+    if 'error' in response:
+        raise GoogleTokenError(response)
+
+    return Tokeninfo(scope=response['scope'], exp=response['exp'], sub=response['sub'], email=response['email'])

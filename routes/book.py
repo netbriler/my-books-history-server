@@ -1,12 +1,12 @@
-import logging
-
 from bson import ObjectId
 from fastapi import APIRouter, HTTPException, status, Query, Depends, Form, BackgroundTasks
 
+from exceptions import GoogleBooksSearchError, GoogleGetBookError
 from models import BooksResponse, UserModel, BookModelRead
 from services.auth import get_current_active_user
 from services.books import search_google_books, get_book_from_google, get_or_create_book, get_books_by_user_id, get_book
 from services.synchronization import synchronize_bookshelves_books
+from utils.misc.logging import logger
 
 router = APIRouter(tags=['Books'])
 
@@ -16,10 +16,10 @@ async def search(q: str = Query(...), start_index: int = Query(0, alias='startIn
                  max_results: int = Query(16, alias='maxResults', ge=1, le=40),
                  print_type: str = Query('books', alias='printType'), projection: str = Query('lite'),
                  current_user: UserModel = Depends(get_current_active_user)):
-    books_response, is_error = search_google_books(q, start_index, max_results, print_type, projection)
-
-    if is_error:
-        logging.error(f'{q=} {books_response=}')
+    try:
+        books_response = search_google_books(q, start_index, max_results, print_type, projection)
+    except GoogleBooksSearchError as e:
+        logger.error(f'Search {q=} error {e} message {e.args[0]}')
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
 
     found_books_ids = list(map(lambda b: b.google_id, books_response.items))
@@ -52,9 +52,10 @@ async def set_bookshelves(background_tasks: BackgroundTasks, id: str, bookshelve
     if book:
         old_bookshelves = book.bookshelves
     else:
-        book, is_error = get_book_from_google(id)
-        if is_error:
-            logging.error(f'{current_user=} {id=}')
+        try:
+            book = get_book_from_google(id)
+        except GoogleGetBookError as e:
+            logger.error(f'{type(e).__name__} {e}')
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
         old_bookshelves = None
 

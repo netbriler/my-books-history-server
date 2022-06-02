@@ -2,13 +2,14 @@ import requests
 from bson import ObjectId
 from pymongo import ReturnDocument
 
-from config import GOOGLE_BOOKS_API_KEY
-from db import db
+from data.config import GOOGLE_BOOKS_API_KEY
+from utils.db import db
+from exceptions import GoogleBooksSearchError, GoogleGetBookError
 from models import BookModel, BooksResponse, BookModelRead
 
 
 def search_google_books(query: str, start_index: int = None, max_results: int = None, print_type: str = None,
-                        projection: str = None) -> tuple[BooksResponse | dict, bool]:
+                        projection: str = None) -> BooksResponse:
     url = 'https://www.googleapis.com/books/v1/volumes'
     params = {
         'q': query,
@@ -22,10 +23,10 @@ def search_google_books(query: str, start_index: int = None, max_results: int = 
 
     response = requests.request('GET', url, params=params).json()
     if 'error' in response:
-        return response, True
+        raise GoogleBooksSearchError(response)
 
     if not response['totalItems']:
-        return BooksResponse(total_items=response['totalItems'], items=[]), False
+        return BooksResponse(total_items=response['totalItems'], items=[])
 
     books = []
     if 'items' in response:
@@ -38,10 +39,10 @@ def search_google_books(query: str, start_index: int = None, max_results: int = 
                 image=volume_info['imageLinks']['thumbnail'] if volume_info['readingModes']['image'] else None,
             ))
 
-    return BooksResponse(total_items=response['totalItems'], items=books), False
+    return BooksResponse(total_items=response['totalItems'], items=books)
 
 
-def get_book_from_google(id: str) -> tuple[BookModel | dict, bool]:
+def get_book_from_google(id: str) -> BookModel:
     url = f'https://www.googleapis.com/books/v1/volumes/{id}/'
     params = {
         'key': GOOGLE_BOOKS_API_KEY,
@@ -49,7 +50,7 @@ def get_book_from_google(id: str) -> tuple[BookModel | dict, bool]:
 
     response = requests.request('GET', url, params=params).json()
     if 'error' in response:
-        return response, True
+        raise GoogleGetBookError(response)
 
     volume_info = response['volumeInfo']
     book = BookModel(
@@ -59,12 +60,11 @@ def get_book_from_google(id: str) -> tuple[BookModel | dict, bool]:
         image=volume_info['imageLinks']['thumbnail'] if volume_info['readingModes']['image'] else None,
     )
 
-    return book, False
+    return book
 
 
-async def get_books_by_user_id(user_id: ObjectId, bookshelves: list[int] = None,
-                               google_ids: list[str] = None, limit: int = None,
-                               offset: int = 0) -> tuple[list[BookModelRead], int]:
+async def get_books_by_user_id(user_id: ObjectId, bookshelves: list[int] = None, google_ids: list[str] = None,
+                               limit: int = None, offset: int = 0) -> tuple[list[BookModelRead], int]:
     query = {'user_id': user_id}
 
     if bookshelves:

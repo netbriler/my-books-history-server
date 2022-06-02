@@ -1,11 +1,11 @@
-import logging
-
 from fastapi import APIRouter, HTTPException, status, Depends, Query
 
+from exceptions import GoogleGetBookshelvesError
 from models import BookshelfModelRead, UserModel, BooksResponse
 from services.auth import get_current_active_user
 from services.books import get_books_by_user_id
 from services.google_bookshelves import GoogleBookshelvesService
+from utils.misc.logging import logger
 
 router = APIRouter(tags=['Bookshelves'])
 
@@ -13,10 +13,11 @@ router = APIRouter(tags=['Bookshelves'])
 @router.get('/', response_model=list[BookshelfModelRead])
 async def get_bookshelves(current_user: UserModel = Depends(get_current_active_user)):
     service = await GoogleBookshelvesService.create(current_user)
-    bookshelves, is_error = service.get_my_bookshelves()
 
-    if is_error:
-        logging.error(f'{bookshelves=}')
+    try:
+        bookshelves = service.get_my_bookshelves()
+    except GoogleGetBookshelvesError as e:
+        logger.error(f'{type(e).__name__} {e}')
         raise HTTPException(status_code=status.HTTP_423_LOCKED, detail='Lose permission to manage google books')
 
     return bookshelves

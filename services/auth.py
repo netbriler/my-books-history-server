@@ -1,11 +1,12 @@
 from datetime import datetime, timedelta
+from typing import NamedTuple
 
 import aioredis
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2AuthorizationCodeBearer
 from jose import JWTError, jwt
 
-from config import JWT_SECRET, REDIS_URL, JWT_ALGORITHM, REFRESH_TOKEN_EXPIRE_MINUTES, ACCESS_TOKEN_EXPIRE_MINUTES
+from data.config import JWT_SECRET, REDIS_URL, JWT_ALGORITHM, REFRESH_TOKEN_EXPIRE_MINUTES, ACCESS_TOKEN_EXPIRE_MINUTES
 from models import UserModel
 from services.users import get_user_by_id
 
@@ -14,7 +15,12 @@ oauth2_scheme = OAuth2AuthorizationCodeBearer(tokenUrl='/oauth/google/redirect?s
                                               description='__Leave blank credentials__')
 
 
-async def create_tokens(access_data: dict, refresh_data: dict) -> tuple[str, str]:
+class Credentials(NamedTuple):
+    access_token: str
+    refresh_token: str
+
+
+async def create_tokens(access_data: dict, refresh_data: dict) -> Credentials:
     access_data.update({'exp': datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)})
     access_token = jwt.encode(access_data, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
@@ -23,10 +29,10 @@ async def create_tokens(access_data: dict, refresh_data: dict) -> tuple[str, str
 
     await save_token(refresh_token, 'white', REFRESH_TOKEN_EXPIRE_MINUTES * 60)  # convert minutes to seconds
 
-    return access_token, refresh_token
+    return Credentials(access_token, refresh_token)
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme)):
+async def get_current_user(token: str = Depends(oauth2_scheme)) -> UserModel:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail='Could not validate credentials',
@@ -46,7 +52,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     return user
 
 
-async def get_current_active_user(current_user: UserModel = Depends(get_current_user)):
+async def get_current_active_user(current_user: UserModel = Depends(get_current_user)) -> UserModel:
     return current_user
 
 
