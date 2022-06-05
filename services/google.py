@@ -4,7 +4,7 @@ from urllib.parse import urlencode
 import requests
 
 from data.config import GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET
-from exceptions import GoogleCodeTokenError, GoogleTokenError
+from exceptions import GoogleCodeTokenError, GoogleTokenError, GoogleGetUserinfoError
 from models import UserCredentialsModel, UserModel
 from services.users import update_user_credentials
 
@@ -21,7 +21,18 @@ class Tokeninfo(NamedTuple):
     email: str
 
 
-def generate_auth_uri(redirect_uri: str, scope: list[str] = None, state: str = None, **kwargs: dict[str, str]) -> str:
+class UserInfo(NamedTuple):
+    id: int
+    email: str
+    name: int
+    picture: str
+    locale: str
+
+
+Url = str
+
+
+def generate_auth_uri(redirect_uri: str, scope: list[str] = None, state: str = None, **kwargs: dict[str, str]) -> Url:
     if scope is None:
         scope = ['https://www.googleapis.com/auth/books', 'email', 'profile', 'openid']
 
@@ -92,6 +103,20 @@ async def refresh_user_tokens(user: UserModel) -> UserModel:
     )
 
     return await update_user_credentials(user.id, user_credentials)
+
+
+def get_userinfo(access_token: str) -> UserInfo:
+    headers = {
+        'Authorization': f'Bearer {access_token}'
+    }
+
+    response = requests.request('GET', 'https://www.googleapis.com/oauth2/v1/userinfo', headers=headers).json()
+
+    if 'error' in response:
+        raise GoogleGetUserinfoError(response)
+
+    return UserInfo(id=response['id'], email=response['email'], name=response['name'],
+                    picture=response['picture'], locale=response['locale'])
 
 
 def get_tokeninfo(access_token: str) -> Tokeninfo:

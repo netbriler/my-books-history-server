@@ -1,13 +1,39 @@
-from exceptions import GoogleAddToBookshelfError, GoogleRemoveFromBookshelfError
+from exceptions import GoogleAddToBookshelfError, GoogleRemoveFromBookshelfError, GoogleGetBookshelvesError, GoogleGetUserinfoError
 from models import UserModel, BookModel
 from services.books import get_or_create_book
+from services.google import get_userinfo
 from services.google_bookshelves import GoogleBookshelvesService
+from services.users import update_or_create_user
 from utils.misc.logging import logger
+
+
+async def synchronize_user(user: UserModel):
+    service = await GoogleBookshelvesService.create(user)
+    try:
+        bookshelves = service.get_my_bookshelves()
+        user.bookshelves = bookshelves
+    except GoogleGetBookshelvesError as e:
+        logger.error(f'{type(e).__name__} {e}')
+
+    try:
+        userinfo = get_userinfo(service.user.credentials.access_token)
+        user.email = userinfo.email
+        user.name = userinfo.name
+        user.picture = userinfo.picture
+        user.locale = userinfo.locale
+    except GoogleGetUserinfoError as e:
+        logger.error(f'{type(e).__name__} {e}')
+
+    await update_or_create_user(user)
 
 
 async def synchronize_books(user: UserModel):
     service = await GoogleBookshelvesService.create(user)
-    books = service.get_all_bookshelf_books()
+    try:
+        books = service.get_all_bookshelf_books()
+    except GoogleGetBookshelvesError as e:
+        logger.error(f'{type(e).__name__} {e}')
+        return
 
     for book in books:
         book.user_id = user.id

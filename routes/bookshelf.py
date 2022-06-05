@@ -12,15 +12,7 @@ router = APIRouter(tags=['Bookshelves'])
 
 @router.get('/', response_model=list[BookshelfModelRead])
 async def get_bookshelves(current_user: UserModel = Depends(get_current_active_user)):
-    service = await GoogleBookshelvesService.create(current_user)
-
-    try:
-        bookshelves = service.get_my_bookshelves()
-    except GoogleGetBookshelvesError as e:
-        logger.error(f'{type(e).__name__} {e}')
-        raise HTTPException(status_code=status.HTTP_423_LOCKED, detail='Lose permission to manage google books')
-
-    return bookshelves
+    return current_user.bookshelves
 
 
 @router.get('/{id}/', response_model=BooksResponse)

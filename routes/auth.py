@@ -9,8 +9,8 @@ from exceptions import GoogleTokenError, GoogleCodeTokenError
 from models import UserModel, CredentialsResponse, UserModelRead, UserCredentialsModel
 from services.auth import is_token_exits, remove_token, get_current_user, create_tokens, REFRESH_TOKEN_EXPIRE_MINUTES
 from services.google import generate_auth_uri, get_token, get_tokeninfo
-from services.synchronization import synchronize_books
-from services.users import get_or_create
+from services.synchronization import synchronize_books, synchronize_user
+from services.users import update_or_create_user
 from utils.misc.logging import logger
 
 router = APIRouter(tags=['Oauth2'])
@@ -58,7 +58,7 @@ async def _oauth_google_redirect(code: str, redirect_uri: str, background_tasks:
                                             refresh_token=access_data.refresh_token,
                                             scope=tokeninfo.scope, expires_in=tokeninfo.exp)
     new_user = UserModel(google_id=tokeninfo.sub, email=tokeninfo.email, credentials=user_credentials)
-    user = await get_or_create(new_user)
+    user = await update_or_create_user(new_user)
 
     access_token, refresh_token = await create_tokens({'sub': str(user.id)}, {'sub': str(user.id)})
     response_content = {'accessToken': access_token,
@@ -79,6 +79,7 @@ async def _oauth_google_redirect(code: str, redirect_uri: str, background_tasks:
                         max_age=REFRESH_TOKEN_EXPIRE_MINUTES)
 
     if background_tasks:
+        background_tasks.add_task(synchronize_user, user=user)
         background_tasks.add_task(synchronize_books, user=user)
 
     return response

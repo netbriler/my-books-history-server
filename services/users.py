@@ -11,7 +11,12 @@ async def get_user_by_id(id: str) -> UserModel | None:
     return UserModel.parse_obj(user) if user else None
 
 
-async def get_or_create(user: UserModel) -> UserModel:
+async def get_user_by_google_id(google_id: str) -> UserModel | None:
+    user = await db['users'].find_one({'google_id': google_id})
+    return UserModel.parse_obj(user) if user else None
+
+
+async def update_or_create_user(user: UserModel) -> UserModel:
     new_user = await db['users'].find_one_and_update({'google_id': user.google_id},
                                                      {'$set': jsonable_encoder(user, exclude=['id'], exclude_none=True,
                                                                                exclude_unset=True)},

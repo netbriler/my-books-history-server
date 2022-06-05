@@ -47,7 +47,7 @@ class GoogleBookshelvesService:
         for item in response['items']:
             if item['id'] in skip_bookshelves:
                 continue
-            bookshelves.append(BookshelfModel(id=item['id'], title=item['title'], total_items=item['volumeCount']))
+            bookshelves.append(BookshelfModel(id=item['id'], title=item['title']))
 
         return bookshelves
 
@@ -69,7 +69,7 @@ class GoogleBookshelvesService:
         response = requests.request('GET', url, headers=headers, params=params).json()
         if 'error' in response:
             raise GoogleGetBookshelfError(response)
-        if response['totalItems'] == 0:
+        if response['totalItems'] == 0 or 'items' not in response:
             return []
 
         books = []
@@ -90,8 +90,10 @@ class GoogleBookshelvesService:
         total_books = {}
         for bookshelf in bookshelves:
             start_index = 0
-            while start_index < bookshelf.total_items:
+            while True:
                 books = self.get_bookshelf_books(bookshelf.id, start_index, max_results=40)
+                if not books or len(books) < 1:
+                    break
 
                 for book in books:
                     if book.google_id not in total_books:
