@@ -8,8 +8,8 @@ from exceptions import GoogleBooksSearchError, GoogleGetBookError
 from models import BookModel, BooksResponse, BookModelRead
 
 
-def search_google_books(query: str, start_index: int = None, max_results: int = None, print_type: str = None,
-                        projection: str = None) -> BooksResponse:
+def search_google_books(query: str, start_index: int = None, max_results: int = None, print_type: str = 'books',
+                        projection: str = 'lite') -> BooksResponse:
     url = 'https://www.googleapis.com/books/v1/volumes'
     params = {
         'q': query,

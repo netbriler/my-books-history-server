@@ -57,7 +57,7 @@ async def get_current_active_user(current_user: UserModel = Depends(get_current_
 
 
 async def save_token(token: str, value: str, ex: int):
-    redis = aioredis.from_url(REDIS_URL, decode_responses=True)
+    redis = aioredis.from_url(REDIS_URL + '?db=1', decode_responses=True)
 
     await redis.set(token, value, ex=ex)
 
@@ -65,7 +65,7 @@ async def save_token(token: str, value: str, ex: int):
 
 
 async def remove_token(token: str):
-    redis = aioredis.from_url(REDIS_URL, decode_responses=True)
+    redis = aioredis.from_url(REDIS_URL + '?db=1', decode_responses=True)
 
     await redis.delete(token)
 
@@ -73,7 +73,7 @@ async def remove_token(token: str):
 
 
 async def is_token_exits(token: str):
-    redis = aioredis.from_url(REDIS_URL, decode_responses=True)
+    redis = aioredis.from_url(REDIS_URL + '?db=1', decode_responses=True)
 
     result = await redis.exists(token)
 

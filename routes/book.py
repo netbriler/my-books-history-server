@@ -5,6 +5,7 @@ from exceptions import GoogleBooksSearchError, GoogleGetBookError
 from models import BooksResponse, UserModel, BookModelRead
 from services.auth import get_current_active_user
 from services.books import search_google_books, get_book_from_google, get_or_create_book, get_books_by_user_id, get_book
+from services.caching import get_cache_data, set_cache_data
 from services.synchronization import synchronize_bookshelves_books
 from utils.misc.logging import logger
 
@@ -12,12 +13,18 @@ router = APIRouter(tags=['Books'])
 
 
 @router.get('/search', response_model=BooksResponse)
-async def search(q: str = Query(...), start_index: int = Query(0, alias='startIndex', ge=0),
+async def search(background_tasks: BackgroundTasks, q: str = Query(...),
+                 start_index: int = Query(0, alias='startIndex', ge=0),
                  max_results: int = Query(16, alias='maxResults', ge=1, le=40),
-                 print_type: str = Query('books', alias='printType'), projection: str = Query('lite'),
                  current_user: UserModel = Depends(get_current_active_user)):
     try:
-        books_response = search_google_books(q, start_index, max_results, print_type, projection)
+        cached_books_response = await get_cache_data(f'{q}:{start_index}:{max_results}')
+        if cached_books_response:
+            books_response = BooksResponse.parse_raw(cached_books_response)
+        else:
+            books_response = search_google_books(q, start_index, max_results)
+            background_tasks.add_task(set_cache_data, f'{q}:{start_index}:{max_results}', books_response.json())
+
     except GoogleBooksSearchError as e:
         logger.error(f'Search {q=} error {e} message {e.args[0]}')
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
