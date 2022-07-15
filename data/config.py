@@ -6,6 +6,9 @@ FRONTEND_URL = config('FRONTEND_URL')
 MONGODB_URL = config('MONGODB_URL')
 REDIS_URL = config('REDIS_URL')
 
+REDIS_TOKENS_DB = config('REDIS_TOKENS_DB', cast=int, default=1)
+REDIS_CASHING_DB = config('REDIS_CASHING_DB', cast=int, default=2)
+
 SEARCH_RESULTS_CACHING_TIME = config('SEARCH_RESULTS_CACHING_TIME', cast=int, default=60 * 15)  # 15 minutes
 
 JWT_SECRET = config('JWT_SECRET')

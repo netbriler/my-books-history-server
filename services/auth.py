@@ -6,7 +6,8 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2AuthorizationCodeBearer
 from jose import JWTError, jwt
 
-from data.config import JWT_SECRET, REDIS_URL, JWT_ALGORITHM, REFRESH_TOKEN_EXPIRE_MINUTES, ACCESS_TOKEN_EXPIRE_MINUTES
+from data.config import JWT_SECRET, REDIS_URL, JWT_ALGORITHM, REFRESH_TOKEN_EXPIRE_MINUTES, \
+    ACCESS_TOKEN_EXPIRE_MINUTES, REDIS_TOKENS_DB
 from models import UserModel
 from services.users import get_user_by_id
 
@@ -57,7 +58,7 @@ async def get_current_active_user(current_user: UserModel = Depends(get_current_
 
 
 async def save_token(token: str, value: str, ex: int):
-    redis = aioredis.from_url(REDIS_URL + '?db=1', decode_responses=True)
+    redis = aioredis.from_url(REDIS_URL + f'?db={REDIS_TOKENS_DB}', decode_responses=True)
 
     await redis.set(token, value, ex=ex)
 
@@ -65,7 +66,7 @@ async def save_token(token: str, value: str, ex: int):
 
 
 async def remove_token(token: str):
-    redis = aioredis.from_url(REDIS_URL + '?db=1', decode_responses=True)
+    redis = aioredis.from_url(REDIS_URL + f'?db={REDIS_TOKENS_DB}', decode_responses=True)
 
     await redis.delete(token)
 
@@ -73,7 +74,7 @@ async def remove_token(token: str):
 
 
 async def is_token_exits(token: str):
-    redis = aioredis.from_url(REDIS_URL + '?db=1', decode_responses=True)
+    redis = aioredis.from_url(REDIS_URL + f'?db={REDIS_TOKENS_DB}', decode_responses=True)
 
     result = await redis.exists(token)
 
