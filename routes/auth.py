@@ -76,7 +76,7 @@ async def _oauth_google_redirect(code: str, redirect_uri: str, background_tasks:
         response = JSONResponse(content=response_content)
 
     response.set_cookie(key='refresh_token', value=refresh_token, httponly=True, secure=True,
-                        max_age=REFRESH_TOKEN_EXPIRE_MINUTES)
+                        max_age=REFRESH_TOKEN_EXPIRE_MINUTES * 60)  # convert minutes to seconds
 
     if background_tasks:
         background_tasks.add_task(synchronize_user, user=user)
@@ -101,7 +101,7 @@ async def oauth_refresh_token(refresh_token: str = Cookie(...)):
                  'tokenType': 'Bearer'}
     )
     response.set_cookie(key='refresh_token', value=refresh_token, httponly=True, secure=True,
-                        max_age=REFRESH_TOKEN_EXPIRE_MINUTES)
+                        max_age=REFRESH_TOKEN_EXPIRE_MINUTES * 60)  # convert minutes to seconds
 
     return response
 
