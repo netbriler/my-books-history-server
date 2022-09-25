@@ -1,0 +1,36 @@
+version: '3.1'
+
+services:
+
+  web:
+    build: .
+    restart: always
+    ports:
+      - '${PORT}:${PORT:-5000}'
+    entrypoint:
+      - ./bin/entrypoint.sh
+    depends_on:
+      - redis
+    environment:
+      FRONTEND_URL: ${FRONTEND_URL}
+      SERVER_URL: ${SERVER_URL}
+
+      REDIS_TOKENS_DB: ${REDIS_TOKENS_DB}
+      REDIS_CASHING_DB: ${REDIS_CASHING_DB}
+      REDIS_URL: 'redis//:redis:6379'
+
+      SEARCH_RESULTS_CACHING_TIME: ${SEARCH_RESULTS_CACHING_TIME:-900}
+
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
+      REFRESH_TOKEN_EXPIRE_MINUTES: ${REFRESH_TOKEN_EXPIRE_MINUTES}
+
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET}
+      GOOGLE_BOOKS_API_KEY: ${GOOGLE_BOOKS_API_KEY}
+  redis:
+    image: redis:alpine
+    command: redis-server
+    environment:
+      - REDIS_REPLICATION_MODE=master
